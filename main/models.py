@@ -7,14 +7,14 @@ import uuid
 # This is a stub
 class Organization(models.Model):
     id = models.UUIDField(primary_key=True)
-    name = models.CharField()
-    bin = models.CharField()
-    address = models.CharField()
+    name = models.CharField(max_length=255)
+    bin = models.CharField(max_length=20)
+    address = models.CharField(max_length=255)
 
 #This is a stub
 class Department(models.Model):
     id = models.UUIDField(primary_key=True)
-    name = models.CharField()
+    name = models.CharField(max_length=255)
     organization_id = models.ForeignKey(to=Organization, null=False, on_delete=models.CASCADE)
 
 class User(AbstractUser):
@@ -25,14 +25,14 @@ class User(AbstractUser):
         EMPLOYEE = 'EMPLOYEE'
 
     id = models.UUIDField(primary_key=True)
-    username = models.CharField(null=False, unique=True)
-    password = models.CharField(null=False)
-    email = models.CharField(unique=True, null=False)
-    first_name = models.CharField(null=False)
-    last_name = models.CharField(null=False)
-    patronymic = models.CharField()
+    username = models.CharField(max_length=150, null=False, unique=True)
+    password = models.CharField(max_length=255, null=False)
+    email = models.CharField(max_length=255, unique=True, null=False)
+    first_name = models.CharField(max_length=150, null=False)
+    last_name = models.CharField(max_length=150, null=False)
+    patronymic = models.CharField(max_length=150, blank=True)
     department_id = models.ForeignKey(to=Department, on_delete=models.SET_NULL, null=True)
-    role = models.CharField(choices=Role.choices)
+    role = models.CharField(max_length=20, choices=Role.choices)
 
     def save(self, *args, **kwargs):
         if not self.id :
@@ -103,3 +103,33 @@ class TrainingSession(models.Model):
 
     def __str__(self):
         return f"{self.training.title} ({self.start_date})"
+
+class Contract(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    supplier_name = models.CharField(max_length=255)
+    supplier_id = models.UUIDField(null=True, blank=True)
+    contract_number = models.CharField(max_length=100, unique=True)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    total_amount = models.DecimalField(max_digits=14, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "contracts"
+
+    def __str__(self):
+        return self.contract_number
+
+
+class ContractAllocation(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    contract = models.ForeignKey(Contract, on_delete=models.CASCADE)
+    training_request_id = models.UUIDField(null=True, blank=True)
+    allocated_amount = models.DecimalField(max_digits=14, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "contract_allocations"
+
+    def __str__(self):
+        return f"{self.contract_id} | {self.allocated_amount}"
