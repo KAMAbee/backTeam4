@@ -6,9 +6,9 @@ import uuid
 
 class Training(models.Model):
     class TrainingType(models.TextChoices):
-        ONLINE = "ONLINE"
-        OFFLINE = "OFFLINE"
-        HYBRID = "HYBRID"
+        SEMINAR = "SEMINAR"
+        TRAINING = "TRAINING"
+        CERTIFICATION = "CERTIFICATION"
 
     class PricingType(models.TextChoices):
         PER_PERSON = "PER_PERSON"
@@ -25,9 +25,6 @@ class Training(models.Model):
     price = models.DecimalField(max_digits=12, decimal_places=2)
 
     created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = "trainings"
 
     def __str__(self):
         return self.title
@@ -49,9 +46,6 @@ class TrainingSession(models.Model):
     capacity = models.IntegerField()
 
     created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = "training_sessions"
 
     def __str__(self):
         return f"{self.training.title} ({self.start_date})"

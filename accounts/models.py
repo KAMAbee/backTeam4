@@ -11,10 +11,6 @@ class Organization(models.Model):
     bin = models.CharField(max_length=20)
     address = models.CharField(max_length=255)
 
-    class Meta:
-        # Таблица уже создана миграциями `main`.
-        db_table = "main_organization"
-
     def save(self, *args, **kwargs):
         if not self.id:
             self.id = uuid.uuid4()
@@ -24,13 +20,9 @@ class Organization(models.Model):
 class Department(models.Model):
     id = models.UUIDField(primary_key=True)
     name = models.CharField(max_length=255)
-    organization_id = models.ForeignKey(
+    organization = models.ForeignKey(
         to="accounts.Organization", null=False, on_delete=models.CASCADE
     )
-
-    class Meta:
-        # Таблица уже создана миграциями `main`.
-        db_table = "main_department"
 
     def save(self, *args, **kwargs):
         if not self.id:
@@ -51,14 +43,11 @@ class User(AbstractUser):
     first_name = models.CharField(max_length=150, null=False)
     last_name = models.CharField(max_length=150, null=False)
     patronymic = models.CharField(max_length=150, blank=True)
-    department_id = models.ForeignKey(
+    department = models.ForeignKey(
         to="accounts.Department", on_delete=models.SET_NULL, null=True
     )
     role = models.CharField(max_length=20, choices=Role.choices)
-
-    class Meta:
-        # Таблица уже создана миграциями `main`.
-        db_table = "main_user"
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
         if not self.id:

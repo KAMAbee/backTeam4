@@ -46,7 +46,6 @@ INSTALLED_APPS = [
     "trainings",
     "training_requests",
     "enrollments",
-    "main",
 ]
 
 MIDDLEWARE = [

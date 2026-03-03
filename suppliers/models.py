@@ -32,15 +32,14 @@ class Supplier(models.Model):
 class Contract(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     supplier_name = models.CharField(max_length=255)
-    supplier_id = models.UUIDField(null=True, blank=True)
+    supplier = models.ForeignKey(
+        "suppliers.Supplier", on_delete=models.CASCADE, related_name="contracts"
+    )
     contract_number = models.CharField(max_length=100, unique=True)
     start_date = models.DateField()
     end_date = models.DateField()
     total_amount = models.DecimalField(max_digits=14, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = "contracts"
 
     def __str__(self):
         return self.contract_number
@@ -52,9 +51,6 @@ class ContractAllocation(models.Model):
     training_request_id = models.UUIDField(null=True, blank=True)
     allocated_amount = models.DecimalField(max_digits=14, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = "contract_allocations"
 
     def __str__(self):
         return f"{self.contract_id} | {self.allocated_amount}"
