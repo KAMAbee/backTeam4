@@ -41,8 +41,11 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
-    "main",
+    "accounts",
     "suppliers",
+    "trainings",
+    "training_requests",
+    "enrollments",
 ]
 
 MIDDLEWARE = [
@@ -108,7 +111,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-AUTH_USER_MODEL = "main.User"
+AUTH_USER_MODEL = "accounts.User"
 
 
 # Internationalization
