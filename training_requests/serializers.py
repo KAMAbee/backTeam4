@@ -36,7 +36,20 @@ class TrainingRequestSerializer(serializers.ModelSerializer):
     def validate_employee_ids(self, value):
         if not value:
             raise serializers.ValidationError("Укажите хотя бы одного сотрудника.")
+        if len(value) != len(set(value)):
+            raise serializers.ValidationError("Список сотрудников содержит дубликаты.")
         return value
+
+    def validate(self, attrs):
+        session = attrs.get("training_session")
+        employee_ids = attrs.get("employee_ids")
+        
+        if session and employee_ids:
+            if len(employee_ids) > session.capacity:
+                raise serializers.ValidationError(
+                    f"Количество сотрудников ({len(employee_ids)}) превышает общую вместимость сессии ({session.capacity})."
+                )
+        return attrs
 
     def create(self, validated_data):
         employee_ids = validated_data.pop("employee_ids")
@@ -62,5 +75,4 @@ class ApproveRequestSerializer(serializers.Serializer):
     contract = serializers.PrimaryKeyRelatedField(queryset=Contract.objects.all())
 
     def validate(self, attrs):
-        # business logic validation in the view to access the training request instance
         return attrs
