@@ -138,8 +138,30 @@ class TrainingRequestViewSet(mixins.CreateModelMixin,
         return Response(TrainingRequestSerializer(training_request).data)
 
     @extend_schema(
+        summary="Отмена заявки (Менеджер)",
+        description="Менеджер отменяет свою заявку, пока она находится в статусе PENDING.",
+        request=None,
+        responses={200: TrainingRequestSerializer}
+    )
+    @action(detail=True, methods=["POST"])
+    def cancel(self, request, pk=None):
+        training_request = self.get_object()
+        
+        if training_request.manager != request.user:
+            return Response({"detail": "Вы не можете отменить чужую заявку."}, status=status.HTTP_403_FORBIDDEN)
+            
+        if training_request.status != TrainingRequest.Status.PENDING:
+            return Response({"detail": "Можно отменить только заявку в ожидании (PENDING)."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        training_request.status = TrainingRequest.Status.CANCELLED
+        training_request.save()
+        
+        return Response(TrainingRequestSerializer(training_request).data)
+
+    @extend_schema(
         summary="Отклонение заявки (HR)",
         description="Администратор отклоняет заявку. Статус меняется на REJECTED.",
+        request=None,
         responses={200: TrainingRequestSerializer}
     )
     @action(detail=True, methods=["POST"])
