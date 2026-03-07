@@ -14,7 +14,24 @@ from enrollments.models import TrainingEnrollment
 from accounts.models import User
 
 
-class TrainingRequestViewSet(viewsets.ModelViewSet):
+from drf_spectacular.utils import extend_schema, extend_schema_view
+
+from rest_framework import viewsets, permissions, status, mixins
+
+@extend_schema_view(
+    list=extend_schema(summary="Список всех заявок", description="Позволяет получить список заявок. Админы видят все, менеджеры - только свои."),
+    create=extend_schema(summary="Создание новой заявки", description="Менеджер создает заявку на обучение для списка сотрудников."),
+    retrieve=extend_schema(summary="Детальная информация о заявке"),
+)
+class TrainingRequestViewSet(mixins.CreateModelMixin,
+                             mixins.RetrieveModelMixin,
+                             mixins.ListModelMixin,
+                             viewsets.GenericViewSet):
+    """
+    Управление жизненным циклом заявок на обучение.
+    Поддерживает создание, просмотр и специальные действия (одобрение/отклонение).
+    Редактирование и удаление запрещены для сохранения целостности данных.
+    """
     queryset = TrainingRequest.objects.all().prefetch_related("employees__employee", "training_session__training")
     serializer_class = TrainingRequestSerializer
 
@@ -29,6 +46,11 @@ class TrainingRequestViewSet(viewsets.ModelViewSet):
             raise ValidationError("Только менеджеры могут создавать запросы на обучение.")
         serializer.save()
 
+    @extend_schema(
+        summary="Одобрение заявки (HR)",
+        description="Администратор одобряет заявку, выбирая контракт. Проверяется бюджет и вместимость сессии.",
+        responses={200: TrainingRequestSerializer}
+    )
     @action(detail=True, methods=["POST"], serializer_class=ApproveRequestSerializer)
     def approve(self, request, pk=None):
         if request.user.role != User.Role.ADMIN:
@@ -115,6 +137,33 @@ class TrainingRequestViewSet(viewsets.ModelViewSet):
             
         return Response(TrainingRequestSerializer(training_request).data)
 
+    @extend_schema(
+        summary="Отмена заявки (Менеджер)",
+        description="Менеджер отменяет свою заявку, пока она находится в статусе PENDING.",
+        request=None,
+        responses={200: TrainingRequestSerializer}
+    )
+    @action(detail=True, methods=["POST"])
+    def cancel(self, request, pk=None):
+        training_request = self.get_object()
+        
+        if training_request.manager != request.user:
+            return Response({"detail": "Вы не можете отменить чужую заявку."}, status=status.HTTP_403_FORBIDDEN)
+            
+        if training_request.status != TrainingRequest.Status.PENDING:
+            return Response({"detail": "Можно отменить только заявку в ожидании (PENDING)."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        training_request.status = TrainingRequest.Status.CANCELLED
+        training_request.save()
+        
+        return Response(TrainingRequestSerializer(training_request).data)
+
+    @extend_schema(
+        summary="Отклонение заявки (HR)",
+        description="Администратор отклоняет заявку. Статус меняется на REJECTED.",
+        request=None,
+        responses={200: TrainingRequestSerializer}
+    )
     @action(detail=True, methods=["POST"])
     def reject(self, request, pk=None):
         if request.user.role != User.Role.ADMIN:
