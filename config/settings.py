@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "trainings",
     "training_requests",
     "enrollments",
+    "drf_spectacular",
 ]
 
 MIDDLEWARE = [
@@ -144,4 +145,17 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "API Системы Управления Очным Обучением",
+    "DESCRIPTION": "Документация API для управления заявками на корпоративное обучение, контрактами и зачислениями.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "persistAuthorization": True,
+        "displayOperationId": True,
+    },
 }
