@@ -26,6 +26,7 @@ urlpatterns = [
     path("api/enrollments/", include("enrollments.urls")),
     path("api/trainings/", include("trainings.urls")),
     path("api/auth/", include("accounts.urls")),
+    path("api/accounts/", include("accounts.urls")),
 
     # 4. Документация API (Swagger/OpenAPI)
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
