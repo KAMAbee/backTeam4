@@ -25,7 +25,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "drf_spectacular",
-    "corsheaders",  # Рекомендую добавить для связи с Фронтендом
+    "corsheaders",
 
     # Твои приложения
     "accounts",
@@ -39,7 +39,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "corsheaders.middleware.CorsMiddleware",  # Для фронтенда
+    "corsheaders.middleware.CorsMiddleware",  # Должен быть выше CommonMiddleware
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -90,12 +90,12 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # 8. Локализация
-LANGUAGE_CODE = "ru-ru"  # Поставил русский для админки
-TIME_ZONE = "Asia/Almaty"  # Твой часовой пояс
+LANGUAGE_CODE = "ru-ru"
+TIME_ZONE = "Asia/Almaty"
 USE_I18N = True
 USE_TZ = True
 
-# 9. Статика и Медиа (Сертификаты)
+# 9. Статика и Медиа
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
@@ -107,7 +107,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # 10. Настройки REST Framework
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
+        "rest_framework.permissions.AllowAny",  # Теперь API открыт по умолчанию
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -131,5 +131,5 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
 }
 
-# Разрешить запросы с любого фронтенда (для разработки)
+# Разрешить запросы с любого фронтенда
 CORS_ALLOW_ALL_ORIGINS = True
