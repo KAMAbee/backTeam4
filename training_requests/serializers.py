@@ -38,6 +38,14 @@ class TrainingRequestSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Укажите хотя бы одного сотрудника.")
         if len(value) != len(set(value)):
             raise serializers.ValidationError("Список сотрудников содержит дубликаты.")
+        
+        # Проверка ролей: в заявку можно добавлять только рядовых сотрудников (EMPLOYEE)
+        for employee in value:
+            if employee.role != User.Role.EMPLOYEE:
+                raise serializers.ValidationError(
+                    f"Пользователь {employee.username} имеет роль {employee.role}. "
+                    "В заявку можно добавлять только рядовых сотрудников (EMPLOYEE)."
+                )
         return value
 
     def validate(self, attrs):
