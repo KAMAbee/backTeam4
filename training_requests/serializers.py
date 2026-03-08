@@ -43,11 +43,38 @@ class TrainingRequestSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         session = attrs.get("training_session")
         employee_ids = attrs.get("employee_ids")
+        from enrollments.models import TrainingEnrollment
         
         if session and employee_ids:
+            # 1. Проверка вместимости
             if len(employee_ids) > session.capacity:
                 raise serializers.ValidationError(
                     f"Количество сотрудников ({len(employee_ids)}) превышает общую вместимость сессии ({session.capacity})."
+                )
+            
+            # 2. Проверка, не зачислены ли они уже
+            already_enrolled = TrainingEnrollment.objects.filter(
+                training_session=session,
+                employee__in=employee_ids
+            ).values_list('employee__username', flat=True)
+            
+            if already_enrolled:
+                names = ", ".join(already_enrolled)
+                raise serializers.ValidationError(
+                    f"Следующие сотрудники уже зачислены на эту сессию: {names}"
+                )
+
+            # 3. Проверка, нет ли уже активных (PENDING/APPROVED) заявок на этих сотрудников для этой сессии
+            existing_requests = TrainingRequestEmployee.objects.filter(
+                training_request__training_session=session,
+                training_request__status__in=[TrainingRequest.Status.PENDING, TrainingRequest.Status.APPROVED],
+                employee__in=employee_ids
+            ).values_list('employee__username', flat=True).distinct()
+
+            if existing_requests:
+                names = ", ".join(existing_requests)
+                raise serializers.ValidationError(
+                    f"На следующих сотрудников уже поданы активные заявки для этой сессии: {names}"
                 )
         return attrs
 

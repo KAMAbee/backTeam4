@@ -47,11 +47,12 @@ class Contract(models.Model):
 
 class ContractAllocation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    contract = models.ForeignKey("suppliers.Contract", on_delete=models.CASCADE)
+    contract = models.ForeignKey("suppliers.Contract", on_delete=models.PROTECT, verbose_name="Контракт")
     training_request = models.ForeignKey(
         "training_requests.TrainingRequest",
         on_delete=models.CASCADE,
         related_name="contract_allocations",
+        verbose_name="Заявка на обучение"
     )
     allocated_amount = models.DecimalField(max_digits=14, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
