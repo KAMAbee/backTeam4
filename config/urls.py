@@ -21,7 +21,7 @@ urlpatterns = [
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 
     # 3. Приложения проекта
-    path("api/requests/", include("training_requests.urls")),
+    path("api/training-requests/", include("training_requests.urls")),
     path("api/suppliers/", include("suppliers.urls")),
     path("api/enrollments/", include("enrollments.urls")),
     path("api/trainings/", include("trainings.urls")),
