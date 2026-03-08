@@ -31,7 +31,7 @@ class Supplier(models.Model):
 
 class Contract(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    supplier_name = models.CharField(max_length=255)
+    # СТРОКУ supplier_name МЫ УДАЛИЛИ
     supplier = models.ForeignKey(
         "suppliers.Supplier", on_delete=models.CASCADE, related_name="contracts"
     )
@@ -42,7 +42,7 @@ class Contract(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.contract_number
+        return f"{self.contract_number} ({self.supplier.name})"
 
 
 class ContractAllocation(models.Model):
