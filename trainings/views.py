@@ -1,3 +1,11 @@
-from django.shortcuts import render
+from rest_framework import viewsets
+from .models import Training, TrainingSession
+from .serializers import TrainingSerializer, TrainingSessionSerializer
 
-# Create your views here.
+class TrainingViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Training.objects.all()
+    serializer_class = TrainingSerializer
+
+class TrainingSessionViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = TrainingSession.objects.all()
+    serializer_class = TrainingSessionSerializer
