@@ -37,18 +37,27 @@ class TrainingRequestViewSet(mixins.CreateModelMixin,
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == User.Role.ADMIN:
-            return TrainingRequest.objects.all().prefetch_related("employees__employee", "training_session__training")
-        return TrainingRequest.objects.filter(manager=user).prefetch_related("employees__employee", "training_session__training")
+        queryset = TrainingRequest.objects.all().prefetch_related("employees__employee", "training_session__training")
+        
+        # Обычный менеджер видит только свои, админ видит все
+        if user.role != User.Role.ADMIN:
+            queryset = queryset.filter(manager=user)
+        
+        # Добавляем фильтрацию по статусу для HR (например, ?status=PENDING)
+        status_param = self.request.query_params.get("status")
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+            
+        return queryset
 
     def perform_create(self, serializer):
-        if self.request.user.role != User.Role.MANAGER and self.request.user.role != User.Role.ADMIN:
+        if self.request.user.role != User.Role.MANAGER:
             raise ValidationError("Только менеджеры могут создавать запросы на обучение.")
         serializer.save()
 
     @extend_schema(
         summary="Одобрение заявки (HR)",
-        description="Администратор одобряет заявку, выбирая контракт. Проверяется бюджет и вместимость сессии.",
+        description="Администратор одобряет заявку, выбирая контракт. Проверяется бюджет, вместимость сессии и соответствие поставщика.",
         responses={200: TrainingRequestSerializer}
     )
     @action(detail=True, methods=["POST"], serializer_class=ApproveRequestSerializer)
@@ -57,7 +66,7 @@ class TrainingRequestViewSet(mixins.CreateModelMixin,
             return Response({"detail": "Только администраторы могут одобрять запросы."}, status=status.HTTP_403_FORBIDDEN)
         
         with transaction.atomic():
-            # Захватываем блокировку на строку запроса, чтобы несколько людей подряд не могли использовать заявку
+            # Захватываем блокировку на строку запроса
             try:
                 training_request = TrainingRequest.objects.select_for_update(nowait=True).get(pk=pk)
             except TrainingRequest.DoesNotExist:
@@ -71,7 +80,7 @@ class TrainingRequestViewSet(mixins.CreateModelMixin,
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             
-            # Захватываем блокировку на строку контракта для безопасного расчета бюджета
+            # Захватываем блокировку на строку контракта
             contract = Contract.objects.select_for_update().get(pk=serializer.validated_data["contract"].id)
             
             employees = training_request.employees.all()
@@ -81,6 +90,12 @@ class TrainingRequestViewSet(mixins.CreateModelMixin,
             training_session = training_request.training_session
             training = training_session.training
             
+            # ВАЛИДАЦИЯ СООТВЕТСТВИЯ ПОСТАВЩИКА
+            if training.supplier and training.supplier != contract.supplier:
+                return Response({
+                    "detail": f"Контракт '{contract.contract_number}' принадлежит поставщику '{contract.supplier.name}', а обучение проводится '{training.supplier.name}'. Выберите другой контракт."
+                }, status=status.HTTP_400_BAD_REQUEST)
+
             # Проверка вместимости сессии
             current_enrollments_count = TrainingEnrollment.objects.filter(training_session=training_session).count()
             if current_enrollments_count + employees.count() > training_session.capacity:
@@ -145,6 +160,9 @@ class TrainingRequestViewSet(mixins.CreateModelMixin,
     )
     @action(detail=True, methods=["POST"])
     def cancel(self, request, pk=None):
+        if request.user.role != User.Role.MANAGER:
+            return Response({"detail": "Только менеджеры могут отменять свои заявки."}, status=status.HTTP_403_FORBIDDEN)
+            
         training_request = self.get_object()
         
         if training_request.manager != request.user:
