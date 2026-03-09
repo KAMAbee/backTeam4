@@ -8,12 +8,24 @@ def _build_fio(user):
 
 class TrainingEnrollmentSerializer(serializers.ModelSerializer):
     training_title = serializers.CharField(source='training_session.training.title', read_only=True)
-    start_date = serializers.DateField(source='training_session.start_date', read_only=True)
-    end_date = serializers.DateField(source='training_session.end_date', read_only=True)
+    start_date = serializers.DateTimeField(source='training_session.start_date', read_only=True)
+    end_date = serializers.DateTimeField(source='training_session.end_date', read_only=True)
+    location = serializers.CharField(source="training_session.location", read_only=True)
+    city = serializers.CharField(source="training_session.city", read_only=True)
 
     class Meta:
         model = TrainingEnrollment
-        fields = ['id', 'training_title', 'start_date', 'end_date', 'is_attended', 'certificate_file', 'certificate_number']
+        fields = [
+            'id',
+            'training_title',
+            'start_date',
+            'end_date',
+            'location',
+            'city',
+            'is_attended',
+            'certificate_file',
+            'certificate_number',
+        ]
         read_only_fields = ['id', 'is_attended', 'certificate_file', 'certificate_number']
 
 class AdminEnrollmentUpdateSerializer(serializers.ModelSerializer):
@@ -35,8 +47,8 @@ class SessionParticipantSerializer(serializers.ModelSerializer):
     enrollment_id = serializers.UUIDField(source="id", read_only=True)
     employee = SessionParticipantEmployeeSerializer(read_only=True)
     training_title = serializers.CharField(source="training_session.training.title", read_only=True)
-    start_date = serializers.DateField(source="training_session.start_date", read_only=True)
-    end_date = serializers.DateField(source="training_session.end_date", read_only=True)
+    start_date = serializers.DateTimeField(source="training_session.start_date", read_only=True)
+    end_date = serializers.DateTimeField(source="training_session.end_date", read_only=True)
 
     class Meta:
         model = TrainingEnrollment

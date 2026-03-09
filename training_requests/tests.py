@@ -1,5 +1,6 @@
-from datetime import date
+from datetime import date, datetime
 
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
@@ -7,6 +8,10 @@ from accounts.models import User
 from suppliers.models import Contract, Supplier
 from training_requests.models import TrainingRequest, TrainingRequestEmployee
 from trainings.models import Training, TrainingSession
+
+
+def dt(y, m, d, h=9, minute=0):
+    return timezone.make_aware(datetime(y, m, d, h, minute))
 
 
 class TrainingRequestContractSupplierValidationTests(APITestCase):
@@ -53,6 +58,13 @@ class TrainingRequestContractSupplierValidationTests(APITestCase):
             end_date=date(2026, 12, 31),
             total_amount="500000.00",
         )
+        self.contract_b_short = Contract.objects.create(
+            supplier=self.supplier_b,
+            contract_number="CTR-B-002",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 2, 1),
+            total_amount="500000.00",
+        )
 
         training_b = Training.objects.create(
             supplier=self.supplier_b,
@@ -64,8 +76,8 @@ class TrainingRequestContractSupplierValidationTests(APITestCase):
         )
         self.session_b = TrainingSession.objects.create(
             training=training_b,
-            start_date=date(2026, 3, 1),
-            end_date=date(2026, 3, 2),
+            start_date=dt(2026, 3, 1, 9, 0),
+            end_date=dt(2026, 3, 2, 18, 0),
             location="Campus",
             city="Astana",
             capacity=10,
@@ -134,3 +146,24 @@ class TrainingRequestContractSupplierValidationTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("Selected contract does not belong to training supplier", str(response.data))
+
+    def test_contract_dates_must_cover_training_session_on_approve(self):
+        training_request = TrainingRequest.objects.create(
+            manager=self.manager,
+            training_session=self.session_b,
+            status=TrainingRequest.Status.PENDING,
+            comment="Pending request",
+        )
+        TrainingRequestEmployee.objects.create(
+            training_request=training_request,
+            employee=self.employee,
+        )
+
+        response = self._auth_client(self.admin).post(
+            f"/api/training-requests/{training_request.id}/approve/",
+            data={"contract": str(self.contract_b_short.id)},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Срок действия контракта не покрывает даты проведения выбранной сессии", str(response.data))

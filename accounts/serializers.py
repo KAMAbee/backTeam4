@@ -51,6 +51,21 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "created_at", "department_name")
 
 
+class UserNamePatchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("first_name", "last_name")
+        extra_kwargs = {
+            "first_name": {"required": False, "allow_blank": False},
+            "last_name": {"required": False, "allow_blank": False},
+        }
+
+    def validate(self, attrs):
+        if not attrs:
+            raise serializers.ValidationError("Передайте first_name и/или last_name.")
+        return attrs
+
+
 class MeProfileUserSerializer(serializers.ModelSerializer):
     fio = serializers.SerializerMethodField()
     department = serializers.CharField(source="department.name", read_only=True)
@@ -72,8 +87,10 @@ class MeProfileUserSerializer(serializers.ModelSerializer):
 class MeProfileCertificateSerializer(serializers.ModelSerializer):
     enrollment_id = serializers.UUIDField(source="id", read_only=True)
     training_title = serializers.CharField(source="training_session.training.title", read_only=True)
-    start_date = serializers.DateField(source="training_session.start_date", read_only=True)
-    end_date = serializers.DateField(source="training_session.end_date", read_only=True)
+    start_date = serializers.DateTimeField(source="training_session.start_date", read_only=True)
+    end_date = serializers.DateTimeField(source="training_session.end_date", read_only=True)
+    location = serializers.CharField(source="training_session.location", read_only=True)
+    city = serializers.CharField(source="training_session.city", read_only=True)
 
     class Meta:
         model = TrainingEnrollment
@@ -82,6 +99,8 @@ class MeProfileCertificateSerializer(serializers.ModelSerializer):
             "training_title",
             "start_date",
             "end_date",
+            "location",
+            "city",
             "is_attended",
             "certificate_number",
             "certificate_file",

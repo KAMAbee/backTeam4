@@ -1,6 +1,7 @@
 from decimal import Decimal
 from django.db import transaction
 from django.db.models import Sum
+from django.utils import timezone
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -92,6 +93,25 @@ class TrainingRequestViewSet(mixins.CreateModelMixin,
             
             training_session = training_request.training_session
             training = training_session.training
+
+            # Договор должен покрывать период проведения выбранной сессии обучения
+            session_start_date = timezone.localtime(training_session.start_date).date() if timezone.is_aware(
+                training_session.start_date
+            ) else training_session.start_date.date()
+            session_end_date = timezone.localtime(training_session.end_date).date() if timezone.is_aware(
+                training_session.end_date
+            ) else training_session.end_date.date()
+
+            if contract.start_date > session_start_date or contract.end_date < session_end_date:
+                return Response(
+                    {
+                        "detail": (
+                            "Срок действия контракта не покрывает даты проведения выбранной сессии: "
+                            f"{training_session.start_date} - {training_session.end_date}."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             # Проверка вместимости сессии
             current_enrollments_count = TrainingEnrollment.objects.filter(training_session=training_session).count()

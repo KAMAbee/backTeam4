@@ -47,8 +47,8 @@ class TrainingSession(models.Model):
     training = models.ForeignKey(
         "trainings.Training", on_delete=models.CASCADE, related_name="sessions", verbose_name="Курс"
     )
-    start_date = models.DateField(verbose_name="Дата начала")
-    end_date = models.DateField(verbose_name="Дата окончания")
+    start_date = models.DateTimeField(verbose_name="Дата и время начала")
+    end_date = models.DateTimeField(verbose_name="Дата и время окончания")
     location = models.CharField(max_length=255, verbose_name="Место")
     city = models.CharField(max_length=100, verbose_name="Город")
     capacity = models.IntegerField(verbose_name="Вместимость")

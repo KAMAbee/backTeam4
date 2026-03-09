@@ -1,5 +1,6 @@
-from datetime import date
+from datetime import date, datetime
 
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
@@ -7,6 +8,10 @@ from accounts.models import User
 from suppliers.models import Contract, ContractAllocation, Supplier
 from training_requests.models import TrainingRequest, TrainingRequestEmployee
 from trainings.models import Training, TrainingSession
+
+
+def dt(y, m, d, h=9, minute=0):
+    return timezone.make_aware(datetime(y, m, d, h, minute))
 
 
 class ContractAnalyticsTests(APITestCase):
@@ -80,8 +85,8 @@ class ContractAnalyticsTests(APITestCase):
         )
         session = TrainingSession.objects.create(
             training=training,
-            start_date=date(2026, 2, 10),
-            end_date=date(2026, 2, 12),
+            start_date=dt(2026, 2, 10, 9, 0),
+            end_date=dt(2026, 2, 12, 18, 0),
             location="Office",
             city="Almaty",
             capacity=20,

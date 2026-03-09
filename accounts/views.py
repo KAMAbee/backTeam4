@@ -1,6 +1,7 @@
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema
-from rest_framework import generics, viewsets
+from rest_framework import generics, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
@@ -11,6 +12,7 @@ from .serializers import (
     MeProfileResponseSerializer,
     MeProfileUserSerializer,
     RegisterSerializer,
+    UserNamePatchSerializer,
     UserSerializer,
 )
 from .permissions import IsAdminRole
@@ -22,9 +24,14 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = [AllowAny]
 
 
-class ProfileView(generics.RetrieveAPIView):
-    serializer_class = UserSerializer
+class ProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "patch", "head", "options"]
+
+    def get_serializer_class(self):
+        if self.request.method.lower() == "patch":
+            return UserNamePatchSerializer
+        return UserSerializer
 
     def get_object(self):
         return self.request.user
@@ -57,3 +64,28 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by("username")
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated, IsAdminRole]
+
+    def get_permissions(self):
+        if self.action == "list":
+            permission_classes = [IsAuthenticated]
+        else:
+            permission_classes = [IsAuthenticated, IsAdminRole]
+        return [permission() for permission in permission_classes]
+
+    def get_queryset(self):
+        queryset = User.objects.all().order_by("username")
+        if self.action == "list":
+            return queryset.filter(role=User.Role.EMPLOYEE).order_by("last_name", "first_name", "email")
+        return queryset
+
+    @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated], url_path="employees")
+    def employees(self, request, *args, **kwargs):
+        if request.user.role not in [User.Role.ADMIN, User.Role.MANAGER]:
+            return Response(
+                {"detail": "Только администраторы и менеджеры могут просматривать список сотрудников."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        employees_qs = User.objects.filter(role=User.Role.EMPLOYEE).order_by("last_name", "first_name", "email")
+        serializer = self.get_serializer(employees_qs, many=True)
+        return Response(serializer.data)

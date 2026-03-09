@@ -1,5 +1,6 @@
 import json
 
+from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import mixins, permissions, serializers, status, viewsets
@@ -15,6 +16,7 @@ from .serializers import (
     TrainingEnrollmentSerializer,
 )
 from accounts.permissions import IsAdminRole
+from trainings.models import TrainingSession
 
 
 class MyEnrollmentsViewSet(viewsets.ReadOnlyModelViewSet):
@@ -89,6 +91,15 @@ class AdminEnrollmentViewSet(mixins.UpdateModelMixin, mixins.ListModelMixin, vie
         responses=SessionParticipantSerializer(many=True),
     )
     def _bulk_patch_session_participants(self, request, session_id, session_enrollments):
+        session = TrainingSession.objects.filter(id=session_id).only("end_date").first()
+        if not session:
+            return Response({"detail": "Сессия обучения не найдена."}, status=status.HTTP_404_NOT_FOUND)
+        if session.end_date >= timezone.now():
+            return Response(
+                {"detail": "Журнал посещаемости и сертификаты можно заполнять только для прошедших мероприятий."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         if isinstance(request.data, list):
             items_raw = request.data
         else:
