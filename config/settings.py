@@ -83,35 +83,18 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# 5. База данных (PostgreSQL)
-def _database_from_url(db_url: str) -> dict:
-    parsed = urlparse(db_url)
-    if parsed.scheme not in {"postgres", "postgresql"}:
-        raise ValueError("DATABASE_URL must start with postgres:// or postgresql://")
-    return {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": unquote(parsed.path.lstrip("/")),
-        "USER": unquote(parsed.username or ""),
-        "PASSWORD": unquote(parsed.password or ""),
-        "HOST": parsed.hostname or "",
-        "PORT": str(parsed.port or "5432"),
-    }
+import dj_database_url
 
-
-DATABASE_URL = os.getenv("DATABASE_URL")
-if DATABASE_URL:
-    DATABASES = {"default": _database_from_url(DATABASE_URL)}
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("DB_NAME"),
-            "USER": os.getenv("DB_USER"),
-            "PASSWORD": os.getenv("DB_PASSWORD"),
-            "HOST": os.getenv("DB_HOST"),
-            "PORT": os.getenv("DB_PORT", "5432"),
-        }
-    }
+# 5. База данных
+# Использует DATABASE_URL из .env или переменных окружения
+# Формат: postgres://USER:PASSWORD@HOST:PORT/NAME
+DATABASES = {
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL'),
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
+}
 
 # 6. Кастомная модель пользователя
 AUTH_USER_MODEL = "accounts.User"
