@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
+from urllib.parse import urlparse, unquote
 
 # 1. Пути и переменные окружения
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -9,8 +10,23 @@ load_dotenv(BASE_DIR / ".env")
 
 # 2. Безопасность
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-default-change-me")
-DEBUG = os.getenv("DEBUG", "True") == "True"
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_list(name: str, default: str = ""):
+    value = os.getenv(name, default)
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+DEBUG = _env_bool("DEBUG", True)
+ALLOWED_HOSTS = _env_list("ALLOWED_HOSTS", "*")
+CSRF_TRUSTED_ORIGINS = _env_list("CSRF_TRUSTED_ORIGINS", "")
 
 # 3. Определение приложений
 INSTALLED_APPS = [
@@ -38,6 +54,7 @@ INSTALLED_APPS = [
 # 4. Middleware
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",  # Должен быть выше CommonMiddleware
     "django.middleware.common.CommonMiddleware",
@@ -67,16 +84,34 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 # 5. База данных (PostgreSQL)
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT', '5432'),
+def _database_from_url(db_url: str) -> dict:
+    parsed = urlparse(db_url)
+    if parsed.scheme not in {"postgres", "postgresql"}:
+        raise ValueError("DATABASE_URL must start with postgres:// or postgresql://")
+    return {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": unquote(parsed.path.lstrip("/")),
+        "USER": unquote(parsed.username or ""),
+        "PASSWORD": unquote(parsed.password or ""),
+        "HOST": parsed.hostname or "",
+        "PORT": str(parsed.port or "5432"),
     }
-}
+
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL:
+    DATABASES = {"default": _database_from_url(DATABASE_URL)}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME"),
+            "USER": os.getenv("DB_USER"),
+            "PASSWORD": os.getenv("DB_PASSWORD"),
+            "HOST": os.getenv("DB_HOST"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+        }
+    }
 
 # 6. Кастомная модель пользователя
 AUTH_USER_MODEL = "accounts.User"
@@ -98,6 +133,7 @@ USE_TZ = True
 # 9. Статика и Медиа
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
@@ -134,5 +170,6 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
 }
 
-# Разрешить запросы с любого фронтенда
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS (для прод лучше указывать список доменов)
+CORS_ALLOW_ALL_ORIGINS = _env_bool("CORS_ALLOW_ALL_ORIGINS", DEBUG)
+CORS_ALLOWED_ORIGINS = _env_list("CORS_ALLOWED_ORIGINS", "")
