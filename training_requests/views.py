@@ -77,7 +77,10 @@ class TrainingRequestViewSet(mixins.CreateModelMixin,
             if training_request.status != TrainingRequest.Status.PENDING:
                 return Response({"detail": "Запрос уже был обработан."}, status=status.HTTP_400_BAD_REQUEST)
             
-            serializer = self.get_serializer(data=request.data)
+            serializer = self.get_serializer(
+                data=request.data,
+                context={"training_request": training_request}
+            )
             serializer.is_valid(raise_exception=True)
             
             # Захватываем блокировку на строку контракта
@@ -89,12 +92,6 @@ class TrainingRequestViewSet(mixins.CreateModelMixin,
             
             training_session = training_request.training_session
             training = training_session.training
-            
-            # ВАЛИДАЦИЯ СООТВЕТСТВИЯ ПОСТАВЩИКА
-            if training.supplier and training.supplier != contract.supplier:
-                return Response({
-                    "detail": f"Контракт '{contract.contract_number}' принадлежит поставщику '{contract.supplier.name}', а обучение проводится '{training.supplier.name}'. Выберите другой контракт."
-                }, status=status.HTTP_400_BAD_REQUEST)
 
             # Проверка вместимости сессии
             current_enrollments_count = TrainingEnrollment.objects.filter(training_session=training_session).count()
