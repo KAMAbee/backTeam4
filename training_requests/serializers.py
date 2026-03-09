@@ -24,17 +24,12 @@ class TrainingRequestSerializer(serializers.ModelSerializer):
         required=True
     )
     training_title = serializers.CharField(source="training_session.training.title", read_only=True)
-    contract = serializers.PrimaryKeyRelatedField(
-        queryset=Contract.objects.all(),
-        write_only=True,
-        required=False
-    )
 
     class Meta:
         model = TrainingRequest
         fields = [
             "id", "manager", "training_session", "training_title", "status",
-            "comment", "created_at", "employees", "employee_ids", "contract"
+            "comment", "created_at", "employees", "employee_ids"
         ]
         read_only_fields = ["id", "manager", "status", "created_at", "employees"]
 
@@ -56,14 +51,14 @@ class TrainingRequestSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         session = attrs.get("training_session")
         employee_ids = attrs.get("employee_ids")
-        contract = attrs.get("contract")
         from enrollments.models import TrainingEnrollment
-
-        if session and contract:
-            training_supplier = session.training.supplier
-            if training_supplier and contract.supplier_id != training_supplier.id:
-                raise serializers.ValidationError("Selected contract does not belong to training supplier")
+        from django.utils import timezone
         
+        if session:
+            # Проверка дат: нельзя подать заявку на прошедшее обучение
+            if session.start_date < timezone.now():
+                raise serializers.ValidationError("Нельзя подать заявку на обучение, которое уже началось или закончилось.")
+
         if session and employee_ids:
             # 1. Проверка вместимости
             if len(employee_ids) > session.capacity:
@@ -99,10 +94,13 @@ class TrainingRequestSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         employee_ids = validated_data.pop("employee_ids")
-        validated_data.pop("contract", None)
         request = self.context.get("request")
         user = request.user if request else None
         
+        # Финальная проверка роли в методе create (безопасность)
+        if user.role != User.Role.MANAGER:
+             raise serializers.ValidationError("Только менеджеры могут создавать заявки.")
+
         training_request = TrainingRequest.objects.create(
             manager=user,
             status=TrainingRequest.Status.PENDING,
@@ -119,13 +117,5 @@ class TrainingRequestSerializer(serializers.ModelSerializer):
 
 
 class ApproveRequestSerializer(serializers.Serializer):
+    """Сериализатор только для выбора контракта при одобрении."""
     contract = serializers.PrimaryKeyRelatedField(queryset=Contract.objects.all())
-
-    def validate(self, attrs):
-        training_request = self.context.get("training_request")
-        contract = attrs.get("contract")
-        if training_request and contract:
-            training_supplier = training_request.training_session.training.supplier
-            if training_supplier and contract.supplier_id != training_supplier.id:
-                raise serializers.ValidationError("Selected contract does not belong to training supplier")
-        return attrs

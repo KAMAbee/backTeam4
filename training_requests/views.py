@@ -94,15 +94,14 @@ class TrainingRequestViewSet(mixins.CreateModelMixin,
             training_session = training_request.training_session
             training = training_session.training
 
-            # Договор должен покрывать период проведения выбранной сессии обучения
-            session_start_date = timezone.localtime(training_session.start_date).date() if timezone.is_aware(
-                training_session.start_date
-            ) else training_session.start_date.date()
-            session_end_date = timezone.localtime(training_session.end_date).date() if timezone.is_aware(
-                training_session.end_date
-            ) else training_session.end_date.date()
+            # ВАЛИДАЦИЯ СООТВЕТСТВИЯ ПОСТАВЩИКА
+            if training.supplier and training.supplier != contract.supplier:
+                return Response({
+                    "detail": f"Контракт '{contract.contract_number}' принадлежит поставщику '{contract.supplier.name}', а обучение проводится '{training.supplier.name}'. Выберите другой контракт."
+                }, status=status.HTTP_400_BAD_REQUEST)
 
-            if contract.start_date > session_start_date or contract.end_date < session_end_date:
+            # Договор должен покрывать период проведения выбранной сессии обучения
+            if contract.start_date > training_session.start_date.date() or contract.end_date < training_session.end_date.date():
                 return Response(
                     {
                         "detail": (
