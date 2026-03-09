@@ -5,8 +5,8 @@ region: fra
 services:
 - image:
     registry_type: DOCR
-    registry: registry.digitalocean.com
-    repository: backteam4/api
+    registry: registry.digitalocean.com/backteam4
+    repository: api
     tag: latest
   http_port: 8080
   instance_count: 1
