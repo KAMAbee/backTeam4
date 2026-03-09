@@ -39,6 +39,6 @@ jobs:
           DB_PORT: "5432"
           SECRET_KEY: "django-insecure-key-example"
           DEBUG: "True"
-          ALLOWED_HOSTS: "*"
+          ALLOWED_HOSTS: "\"*\""
         with:
           token: ${{ secrets.DO_ACCESS_TOKEN }}
