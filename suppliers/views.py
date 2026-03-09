@@ -1,8 +1,8 @@
 from django.db.models import Sum
-from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema, inline_serializer
 from rest_framework import permissions, serializers, viewsets
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema, inline_serializer
 
 from accounts.permissions import IsAdminRole
 from training_requests.models import TrainingRequest
@@ -14,10 +14,24 @@ class SupplierViewSet(viewsets.ModelViewSet):
     queryset = Supplier.objects.all()
     serializer_class = SupplierSerializer
 
+    def get_permissions(self):
+        if self.action in ["list", "retrieve"]:
+            permission_classes = [permissions.IsAuthenticated]
+        else:
+            permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+        return [permission() for permission in permission_classes]
+
 
 class ContractViewSet(viewsets.ModelViewSet):
     queryset = Contract.objects.all().order_by("-created_at")
     serializer_class = ContractSerializer
+
+    def get_permissions(self):
+        if self.action in ["list", "retrieve"]:
+            permission_classes = [permissions.IsAuthenticated]
+        else:
+            permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+        return [permission() for permission in permission_classes]
 
     @extend_schema(
         summary="Детальная аналитика по договору",
@@ -114,23 +128,22 @@ class ContractViewSet(viewsets.ModelViewSet):
     description="Возвращает общую сумму всех контрактов, сумму потраченных средств и остаток бюджета.",
     responses={
         200: inline_serializer(
-            name='BudgetSummaryResponse',
+            name="BudgetSummaryResponse",
             fields={
-                'total_contract_amount': serializers.FloatField(),
-                'allocated_total': serializers.FloatField(),
-                'remaining_budget': serializers.FloatField(),
+                "total_contract_amount": serializers.FloatField(),
+                "allocated_total": serializers.FloatField(),
+                "remaining_budget": serializers.FloatField(),
             }
         )
     }
 )
 @api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, IsAdminRole])
 def budget_summary(request):
-    # Считаем общую сумму всех заключенных контрактов
     total_contract_amount = (
         Contract.objects.aggregate(total=Sum("total_amount"))["total"] or 0
     )
 
-    # Считаем, сколько денег уже заблокировано/списано под заявки
     allocated_total = (
         ContractAllocation.objects.aggregate(total=Sum("allocated_amount"))["total"]
         or 0
