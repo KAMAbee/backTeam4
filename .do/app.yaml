@@ -5,9 +5,43 @@ region: fra
 services:
 - image:
     registry_type: DOCR
-    repository: backteam4/api
+    registry: backteam4
+    repository: api
     tag: latest
   http_port: 8080
   instance_count: 1
   instance_size_slug: apps-s-1vcpu-1gb-fixed
   name: api
+  envs:
+    - key: DB_NAME
+      value: ${DB_NAME}
+      scope: RUN_TIME
+      type: GENERAL
+    - key: DB_USER
+      value: ${DB_USER}
+      scope: RUN_TIME
+      type: GENERAL
+    - key: DB_PASSWORD
+      value: ${DB_PASSWORD}
+      scope: RUN_TIME
+      type: GENERAL
+    - key: DB_HOST
+      value: ${DB_HOST}
+      scope: RUN_TIME
+      type: GENERAL
+    - key: DB_PORT
+      value: ${DB_PORT}
+      scope: RUN_TIME
+      type: GENERAL
+    - key: SECRET_KEY
+      value: ${SECRET_KEY}
+      scope: RUN_TIME
+      type: GENERAL
+    - key: DEBUG
+      value: ${DEBUG}
+      scope: RUN_TIME
+      type: GENERAL
+    - key: ALLOWED_HOSTS
+      value: ${ALLOWED_HOSTS}
+      scope: RUN_TIME
+      type: GENERAL
